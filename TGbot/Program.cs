@@ -11,6 +11,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot;
 using Telegram.Bot.Types.ReplyMarkups;
 using System.Collections;
+using TGbot;
 
 namespace ConsoleApp2
 {
@@ -40,7 +41,6 @@ namespace ConsoleApp2
 
             Console.ReadLine();
 
-            // Send cancellation request to stop bot
             cts.Cancel();
 
             async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
@@ -56,6 +56,14 @@ namespace ConsoleApp2
                 {
                     case "/start":
                         await StartMessage(botClient, message, chatId);
+                        break;
+                    case "Квиз для подростоков":
+                        Quiz.StartQuiz(isChildQuiz: true, _token: _token, chatId);
+                        cts.Cancel();
+                        break;
+                    case "Квиз для взрослых":
+                        Quiz.StartQuiz(isChildQuiz: false, _token: _token, chatId);
+                        cts.Cancel();
                         break;
                     default:
                         await botClient.SendTextMessageAsync(chatId: message.Chat.Id, text: "Я вас не понимаю. Напишите /start");
