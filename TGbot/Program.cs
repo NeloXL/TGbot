@@ -45,54 +45,41 @@ namespace ConsoleApp2
 
             async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
             {
-                if (update.Message is not { } message)
-                    return;
-                if (message.Text is not { } messageText)
-                    return;
-                var chatId = message.Chat.Id;
+                if (update.Type == UpdateType.Message) await HandleMessage(botClient, update.Message);
+            }
 
-                if (message.Text == "/start")
+            async Task HandleMessage(ITelegramBotClient botClient, Message message)
+            {
+                ChatId chatId = message.Chat.Id;
+
+                switch (message.Text)
                 {
-                    var inlineKeyboard = new InlineKeyboardMarkup(new[]
-                    {
+                    case "/start":
+                        await StartMessage(botClient, message, chatId);
+                        break;
+                    default:
+                        await botClient.SendTextMessageAsync(chatId: message.Chat.Id, text: "Я вас не понимаю. Напишите /start");
+                        break;
+                }
+            }
 
-                    new []
+            async Task StartMessage(ITelegramBotClient botClient, Message message, ChatId chatId)
+            {
+                var keyboard = new ReplyKeyboardMarkup(new[]
                     {
-                    InlineKeyboardButton.WithCallbackData("Квиз для недовзрослых", "child"),
-                    },
-
-                    new []
-                    {
-                    InlineKeyboardButton.WithCallbackData("Квиз для перемолодых", "adult")
-                    },
+                        new KeyboardButton[]
+                        {
+                            new KeyboardButton("Квиз для взрослых")
+                        },
+                        new KeyboardButton[]
+                        {
+                            new KeyboardButton("Квиз для подростков")
+                        }
                     });
+                keyboard.ResizeKeyboard = true;
+                keyboard.OneTimeKeyboard = true;
 
-                    // отправка сообщения с inline клавиатурой
-                    await botClient.SendTextMessageAsync(
-                        chatId: message.Chat.Id,
-                        text: "Выбери квиз в inline - клавиатуре",
-                        replyMarkup: inlineKeyboard
-                    );
-
-
-                    botClient.AnswerCallbackQueryAsync() += (object sender, CallbackQuery e) => {
-                        var callbackQuery = e.CallbackQuery;
-                        var callbackQueryId = callbackQuery.Id;
-                        return Task.CompletedTask;
-                    };
-
-
-                    Start.StartMessage();
-                    cts.Cancel();
-                }
-                else
-                {
-
-                    Message sentMessage = await botClient.SendTextMessageAsync(
-                        chatId: chatId,
-                        text: "Я тебя не понимаю, напиши '/start'",
-                        cancellationToken: cancellationToken);
-                }
+                await botClient.SendTextMessageAsync(chatId: chatId, text: "Выберите категорию квиза:", replyMarkup: keyboard);
             }
 
             Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
