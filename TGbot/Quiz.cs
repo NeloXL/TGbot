@@ -10,6 +10,7 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types;
 using Newtonsoft.Json.Linq;
 using Telegram.Bot.Polling;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace TGbot
 {
@@ -17,6 +18,25 @@ namespace TGbot
     {
         static bool _isChildQuiz;
         static ChatId chatId;
+
+        static List<string> adultThemes = new List<string>()
+        {
+            "Тема взрослого квиза 1",
+            "Тема взрослого квиза 2",
+            "Тема взрослого квиза 3",
+            "Тема взрослого квиза 4",
+            "Тема взрослого квиза 5"
+        };
+        
+        static List<string> childThemes = new List<string>()
+        {
+            "Тема подросткового квиза 1",
+            "Тема подросткового квиза 2",
+            "Тема подросткового квиза 3",
+            "Тема подросткового квиза 4",
+            "Тема подросткового квиза 5"
+        };
+
         static List<string> adultQuestions = new List<string>()
         {
             "Взрослый вопрос 1",
@@ -68,12 +88,44 @@ namespace TGbot
 
             var me = await botClient.GetMeAsync();
 
-            if (_isChildQuiz) await botClient.SendTextMessageAsync(chatId, "Вопрос для детского квиза 1:");
-            else await botClient.SendTextMessageAsync(chatId, "Вопрос для взрослого квиза 1:");
+            if (_isChildQuiz) await ChildQuizThemes(botClient);
+            else await AdultQuizThemes(botClient);
 
             Console.ReadLine();
 
             cts.Cancel();
+        }
+
+        static async Task AdultQuizThemes(ITelegramBotClient botClient)
+        {
+            await botClient.SendTextMessageAsync(chatId, "Выберите тему квиза:");
+            foreach (string str in adultThemes)
+            {
+                var keyboard = new InlineKeyboardMarkup(new[]
+                {
+                    new InlineKeyboardButton[]
+                    {
+                        InlineKeyboardButton.WithCallbackData("Выбрать", $"theme_{str}")
+                    }
+                });
+                await botClient.SendTextMessageAsync(chatId, str, replyMarkup: keyboard);
+            }
+        }
+
+        static async Task ChildQuizThemes(ITelegramBotClient botClient)
+        {
+            await botClient.SendTextMessageAsync(chatId, "Выберите тему квиза:");
+            foreach (string str in childThemes)
+            {
+                var keyboard = new InlineKeyboardMarkup(new[]
+                {
+                    new InlineKeyboardButton[]
+                    {
+                        InlineKeyboardButton.WithCallbackData("Выбрать", $"theme_{str}")
+                    }
+                });
+                await botClient.SendTextMessageAsync(chatId, str, replyMarkup: keyboard);
+            }
         }
 
 
@@ -92,12 +144,25 @@ namespace TGbot
                         }
                     }
                 }
+                else if (update.Type == UpdateType.CallbackQuery)
+                {
+                    await HandleCallbackQuery(botClient, update.CallbackQuery);
+                }
+
                 else if (!intAnswers.Contains(update.Message.Text))
                 {
                     await botClient.SendTextMessageAsync(chatId, "Неправильный формат ответа");
                 }
             }
             questionNumber++;
+        }
+
+        async static Task HandleCallbackQuery(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+        {
+            if (callbackQuery.Data == $"theme_{adultThemes[0]}")
+            {
+                Console.WriteLine($"Выбрал тему{adultThemes[0]}");
+            } 
         }
         
         public static Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
