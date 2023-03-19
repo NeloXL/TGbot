@@ -18,6 +18,7 @@ namespace TGbot
     {
         static bool _isChildQuiz;
         static ChatId chatId;
+        public static string token = "";
 
         static List<string> adultThemes = new List<string>()
         {
@@ -36,23 +37,6 @@ namespace TGbot
             "Тема подросткового квиза 4",
             "Тема подросткового квиза 5"
         };
-
-        static List<string> adultQuestions = new List<string>()
-        {
-            "Взрослый вопрос 1",
-            "Взрослый вопрос 2",
-            "Взрослый вопрос 3",
-            "Взрослый вопрос 4",
-            "Взрослый вопрос 5"
-        };
-        static List<string> childQuestions = new List<string>()
-        {
-            "Детский вопрос 1",
-            "Детский вопрос 2",
-            "Детский вопрос 3",
-            "Детский вопрос 4",
-            "Детский вопрос 5"
-        };
         static List<string> intAnswers = new List<string>()
         {
             "1",
@@ -69,6 +53,7 @@ namespace TGbot
         {
             _isChildQuiz = isChildQuiz;
             chatId = _chatId;
+            token = _token;
 
             var botClient = new TelegramBotClient(_token);
 
@@ -94,88 +79,92 @@ namespace TGbot
             Console.ReadLine();
 
             cts.Cancel();
-        }
 
-        static async Task AdultQuizThemes(ITelegramBotClient botClient)
-        {
-            await botClient.SendTextMessageAsync(chatId, "Выберите тему квиза:");
-            foreach (string str in adultThemes)
+            static async Task AdultQuizThemes(ITelegramBotClient botClient)
             {
-                var keyboard = new InlineKeyboardMarkup(new[]
+                await botClient.SendTextMessageAsync(chatId, "Выберите тему квиза:");
+                foreach (string str in adultThemes)
                 {
+                    var keyboard = new InlineKeyboardMarkup(new[]
+                    {
                     new InlineKeyboardButton[]
                     {
                         InlineKeyboardButton.WithCallbackData("Выбрать", $"theme_{str}")
                     }
                 });
-                await botClient.SendTextMessageAsync(chatId, str, replyMarkup: keyboard);
+                    await botClient.SendTextMessageAsync(chatId, str, replyMarkup: keyboard);
+                }
             }
-        }
 
-        static async Task ChildQuizThemes(ITelegramBotClient botClient)
-        {
-            await botClient.SendTextMessageAsync(chatId, "Выберите тему квиза:");
-            foreach (string str in childThemes)
+            static async Task ChildQuizThemes(ITelegramBotClient botClient)
             {
-                var keyboard = new InlineKeyboardMarkup(new[]
+                await botClient.SendTextMessageAsync(chatId, "Выберите тему квиза:");
+                foreach (string str in childThemes)
                 {
+                    var keyboard = new InlineKeyboardMarkup(new[]
+                    {
                     new InlineKeyboardButton[]
                     {
                         InlineKeyboardButton.WithCallbackData("Выбрать", $"theme_{str}")
                     }
                 });
-                await botClient.SendTextMessageAsync(chatId, str, replyMarkup: keyboard);
+                    await botClient.SendTextMessageAsync(chatId, str, replyMarkup: keyboard);
+                }
             }
-        }
 
 
-        async static Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
-        {
-            if (questionNumber >= 0)
+            async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
             {
-                if (update.Type == UpdateType.Message && intAnswers.Contains(update.Message.Text))
+                if (questionNumber >= 0)
                 {
-                    answers[questionNumber] = $"{update.Message.Text}";
-                    if (questionNumber == 4)
+                    if (update.Type == UpdateType.Message && intAnswers.Contains(update.Message.Text))
                     {
-                        foreach (string answer in answers)
+                        answers[questionNumber] = $"{update.Message.Text}";
+                        if (questionNumber == 4)
                         {
-                            Console.WriteLine(answer);
+                            foreach (string answer in answers)
+                            {
+                                Console.WriteLine(answer);
+                            }
                         }
                     }
-                }
-                else if (update.Type == UpdateType.CallbackQuery)
-                {
-                    await HandleCallbackQuery(botClient, update.CallbackQuery);
-                }
+                    else if (update.Type == UpdateType.CallbackQuery)
+                    {
+                        await HandleCallbackQuery(botClient, update.CallbackQuery);
+                    }
 
-                else if (!intAnswers.Contains(update.Message.Text))
+                    else if (!intAnswers.Contains(update.Message.Text))
+                    {
+                        await botClient.SendTextMessageAsync(chatId, "Неправильный формат ответа");
+                    }
+                }
+                questionNumber++;
+            }
+
+            async Task HandleCallbackQuery(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+            {
+                if (callbackQuery.Data.StartsWith("theme"))
                 {
-                    await botClient.SendTextMessageAsync(chatId, "Неправильный формат ответа");
+                    await StartTheme.ThemeStart(token, callbackQuery.Data.Remove(0, 6));
+                    Console.WriteLine(callbackQuery.Data.Remove(0, 6));
+                    cts.Cancel();
                 }
             }
-            questionNumber++;
+
+            static Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
+            {
+                var ErrorMessage = exception switch
+                {
+                    ApiRequestException apiRequestException
+                        => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
+                    _ => exception.ToString()
+                };
+
+                Console.WriteLine(ErrorMessage);
+                return Task.CompletedTask;
+            }
         }
 
-        async static Task HandleCallbackQuery(ITelegramBotClient botClient, CallbackQuery callbackQuery)
-        {
-            if (callbackQuery.Data == $"theme_{adultThemes[0]}")
-            {
-                Console.WriteLine($"Выбрал тему{adultThemes[0]}");
-            } 
-        }
         
-        public static Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
-        {
-            var ErrorMessage = exception switch
-            {
-                ApiRequestException apiRequestException
-                    => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
-                _ => exception.ToString()
-            };
-
-            Console.WriteLine(ErrorMessage);
-            return Task.CompletedTask;
-        }
     }
 }
